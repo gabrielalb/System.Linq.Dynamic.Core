@@ -19,6 +19,8 @@ namespace System.Linq.Dynamic.Core.Parser
         Expression GenerateLessThanEqual(Expression left, Expression right);
 
         Expression GenerateNotEqual(Expression left, Expression right);
+        
+        Expression GenerateBetween(Expression left, (Expression right, Expression right2) between);
 
         Expression GenerateStringConcat(Expression left, Expression right);
 

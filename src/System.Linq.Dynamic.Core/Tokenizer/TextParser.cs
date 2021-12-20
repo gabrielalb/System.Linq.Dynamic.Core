@@ -31,7 +31,8 @@ namespace System.Linq.Dynamic.Core.Tokenizer
             { "or", TokenId.DoubleBar },
             { "OrElse", TokenId.DoubleBar },
             { "not", TokenId.Exclamation },
-            { "mod", TokenId.Percent }
+            { "mod", TokenId.Percent },
+            { "Between", TokenId.Between }
         };
 
         private readonly ParsingConfig _config;

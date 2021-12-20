@@ -430,20 +430,24 @@ namespace System.Linq.Dynamic.Core.Parser
             return left;
         }
 
-        // =, ==, !=, <>, >, >=, <, <= operators
+        // =, ==, !=, <>, >, >=, <, <=, between operators
         Expression ParseComparisonOperator()
         {
             Expression left = ParseShiftOperator();
             while (_textParser.CurrentToken.Id == TokenId.Equal || _textParser.CurrentToken.Id == TokenId.DoubleEqual ||
                    _textParser.CurrentToken.Id == TokenId.ExclamationEqual || _textParser.CurrentToken.Id == TokenId.LessGreater ||
                    _textParser.CurrentToken.Id == TokenId.GreaterThan || _textParser.CurrentToken.Id == TokenId.GreaterThanEqual ||
-                   _textParser.CurrentToken.Id == TokenId.LessThan || _textParser.CurrentToken.Id == TokenId.LessThanEqual)
+                   _textParser.CurrentToken.Id == TokenId.LessThan || _textParser.CurrentToken.Id == TokenId.LessThanEqual ||
+                   _textParser.CurrentToken.Id == TokenId.Between)
             {
                 ConstantExpression constantExpr;
                 TypeConverter typeConverter;
                 Token op = _textParser.CurrentToken;
                 _textParser.NextToken();
                 Expression right = ParseShiftOperator();
+                Expression right2 = null;
+                
+                bool isBetween = op.Id == TokenId.Between;
                 bool isEquality = op.Id == TokenId.Equal || op.Id == TokenId.DoubleEqual || op.Id == TokenId.ExclamationEqual || op.Id == TokenId.LessGreater;
 
                 if (isEquality && (!left.Type.GetTypeInfo().IsValueType && !right.Type.GetTypeInfo().IsValueType || left.Type == typeof(Guid) && right.Type == typeof(Guid)))
@@ -462,6 +466,47 @@ namespace System.Linq.Dynamic.Core.Parser
                         else
                         {
                             throw IncompatibleOperandsError(op.Text, left, right, op.Pos);
+                        }
+                    }
+                }
+                else if (isBetween)
+                {
+                    Token op2 = _textParser.CurrentToken;
+                    _textParser.NextToken();
+                    if (op2.Id == TokenId.DoubleAmphersand)
+                    {
+                        right2 = ParseShiftOperator();
+                        
+                        if (!(Constants.IsNull(left) || Constants.IsNull(right)) && left.Type != right.Type)
+                        {
+                            if (left.Type.IsAssignableFrom(right.Type) || HasImplicitConversion(right.Type, left.Type))
+                            {
+                                right = Expression.Convert(right, left.Type);
+                            }
+                            else if (right.Type.IsAssignableFrom(left.Type) || HasImplicitConversion(left.Type, right.Type))
+                            {
+                                left = Expression.Convert(left, right.Type);
+                            }
+                            else
+                            {
+                                throw IncompatibleOperandsError(op.Text, left, right, op.Pos);
+                            }
+                        }
+                        
+                        if (!(Constants.IsNull(left) || Constants.IsNull(right2)) && left.Type != right2.Type)
+                        {
+                            if (left.Type.IsAssignableFrom(right2.Type) || HasImplicitConversion(right2.Type, left.Type))
+                            {
+                                right2 = Expression.Convert(right2, left.Type);
+                            }
+                            else if (right2.Type.IsAssignableFrom(left.Type) || HasImplicitConversion(left.Type, right2.Type))
+                            {
+                                left = Expression.Convert(left, right2.Type);
+                            }
+                            else
+                            {
+                                throw IncompatibleOperandsError(op.Text, left, right2, op.Pos);
+                            }
                         }
                     }
                 }
@@ -569,6 +614,9 @@ namespace System.Linq.Dynamic.Core.Parser
                         break;
                     case TokenId.LessThanEqual:
                         left = _expressionHelper.GenerateLessThanEqual(left, right);
+                        break;
+                    case TokenId.Between:
+                        left = _expressionHelper.GenerateBetween(left, (right, right2));
                         break;
                 }
             }

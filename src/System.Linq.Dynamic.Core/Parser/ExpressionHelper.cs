@@ -104,6 +104,38 @@ namespace System.Linq.Dynamic.Core.Parser
 
             return Expression.NotEqual(left, right);
         }
+        
+        public Expression GenerateBetween(Expression left, (Expression right, Expression right2) between)
+        {
+            if (left.Type == typeof(string))
+            {
+                return Expression.AndAlso(Expression.GreaterThanOrEqual(GenerateStaticMethodCall("Compare", left, between.right), Expression.Constant(0)), Expression.LessThanOrEqual(GenerateStaticMethodCall("Compare", left, between.right2), Expression.Constant(0)));
+            }
+
+            if (left.Type.GetTypeInfo().IsEnum || between.right.Type.GetTypeInfo().IsEnum && between.right.Type.GetTypeInfo().IsEnum)
+            {
+                return Expression.AndAlso(Expression.GreaterThanOrEqual(
+                        left.Type.GetTypeInfo().IsEnum
+                            ? Expression.Convert(left, Enum.GetUnderlyingType(left.Type))
+                            : left,
+                        between.right.Type.GetTypeInfo().IsEnum
+                            ? Expression.Convert(between.right, Enum.GetUnderlyingType(between.right.Type))
+                            : between.right),
+
+                    Expression.LessThanOrEqual(
+                        left.Type.GetTypeInfo().IsEnum
+                            ? Expression.Convert(left, Enum.GetUnderlyingType(left.Type))
+                            : left,
+                        between.right2.Type.GetTypeInfo().IsEnum
+                            ? Expression.Convert(between.right2, Enum.GetUnderlyingType(between.right2.Type))
+                            : between.right2));
+            }
+
+            WrapConstantExpressions(ref left, ref between.right);
+            WrapConstantExpressions(ref left, ref between.right2);
+
+            return Expression.AndAlso(Expression.GreaterThanOrEqual(left, between.right), Expression.LessThanOrEqual(left, between.right2));
+        }
 
         public Expression GenerateGreaterThan(Expression left, Expression right)
         {
