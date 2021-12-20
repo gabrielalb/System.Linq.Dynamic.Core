@@ -41,6 +41,8 @@
         NullCoalescing,
         Lambda,
         NullPropagation,
-        Between
+        Between,
+        IsNotNull,
+        IsNull
     }
 }

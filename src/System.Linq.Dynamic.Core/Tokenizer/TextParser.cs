@@ -32,7 +32,9 @@ namespace System.Linq.Dynamic.Core.Tokenizer
             { "OrElse", TokenId.DoubleBar },
             { "not", TokenId.Exclamation },
             { "mod", TokenId.Percent },
-            { "Between", TokenId.Between }
+            { "Between", TokenId.Between },
+            { "Is Not Null", TokenId.IsNotNull },
+            { "Is Null", TokenId.IsNull }
         };
 
         private readonly ParsingConfig _config;
@@ -76,6 +78,16 @@ namespace System.Linq.Dynamic.Core.Tokenizer
             if (_textPos + 1 < _textLen)
             {
                 return _text[_textPos + 1];
+            }
+
+            return '\0';
+        }
+        
+        public char PeekNextChar(int textPos)
+        {
+            if (textPos + 1 < _textLen)
+            {
+                return _text[textPos + 1];
             }
 
             return '\0';
@@ -322,6 +334,48 @@ namespace System.Linq.Dynamic.Core.Tokenizer
                     break;
 
                 default:
+                    if (_ch == 'I' || _ch == 'i')
+                    {
+                        int textPos = _textPos;
+                        string isNotNull = "Is Not Null";
+                        string txt = "";
+                        txt += _ch;
+                        do
+                        {
+                            txt += PeekNextChar(textPos);
+                            textPos += 1;
+                        } while (isNotNull.ToLowerInvariant().IndexOf(txt.ToLowerInvariant(), StringComparison.Ordinal) >= 0);
+
+                        if (string.Compare(isNotNull.ToLowerInvariant(), txt.ToLowerInvariant()) == 0)
+                        {
+                            tokenId = TokenId.IsNotNull;
+                            _textPos = textPos;
+                            NextChar();
+                            break;
+                        }
+                    }
+                    
+                    if (_ch == 'I' || _ch == 'i')
+                    {
+                        int textPos = _textPos;
+                        string isNull = "Is Null";
+                        string txt = "";
+                        txt += _ch;
+                        do
+                        {
+                            txt += PeekNextChar(textPos);
+                            textPos += 1;
+                        } while (isNull.ToLowerInvariant().IndexOf(txt.ToLowerInvariant(), StringComparison.Ordinal) >= 0);
+
+                        if (string.Compare(isNull.ToLowerInvariant(), txt.ToLowerInvariant()) == 0)
+                        {
+                            tokenId = TokenId.IsNull;
+                            _textPos = textPos;
+                            NextChar();
+                            break;
+                        }
+                    }
+                    
                     if (char.IsLetter(_ch) || _ch == '@' || _ch == '_' || _ch == '$' || _ch == '^' || _ch == '~')
                     {
                         do

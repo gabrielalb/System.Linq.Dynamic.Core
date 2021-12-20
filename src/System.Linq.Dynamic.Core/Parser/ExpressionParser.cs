@@ -438,20 +438,35 @@ namespace System.Linq.Dynamic.Core.Parser
                    _textParser.CurrentToken.Id == TokenId.ExclamationEqual || _textParser.CurrentToken.Id == TokenId.LessGreater ||
                    _textParser.CurrentToken.Id == TokenId.GreaterThan || _textParser.CurrentToken.Id == TokenId.GreaterThanEqual ||
                    _textParser.CurrentToken.Id == TokenId.LessThan || _textParser.CurrentToken.Id == TokenId.LessThanEqual ||
-                   _textParser.CurrentToken.Id == TokenId.Between)
+                   _textParser.CurrentToken.Id == TokenId.Between || _textParser.CurrentToken.Id == TokenId.IsNull || 
+                   _textParser.CurrentToken.Id == TokenId.IsNotNull)
             {
                 ConstantExpression constantExpr;
                 TypeConverter typeConverter;
                 Token op = _textParser.CurrentToken;
                 _textParser.NextToken();
-                Expression right = ParseShiftOperator();
+                
+                Expression right = null;
                 Expression right2 = null;
+                if (op.Id != TokenId.IsNull && op.Id != TokenId.IsNotNull)
+                    right = ParseShiftOperator();
+                else
+                    right = Expression.Constant(null);
                 
                 bool isBetween = op.Id == TokenId.Between;
-                bool isEquality = op.Id == TokenId.Equal || op.Id == TokenId.DoubleEqual || op.Id == TokenId.ExclamationEqual || op.Id == TokenId.LessGreater;
+                bool isEquality = op.Id == TokenId.Equal || op.Id == TokenId.DoubleEqual || op.Id == TokenId.ExclamationEqual || op.Id == TokenId.LessGreater || op.Id == TokenId.IsNull || op.Id == TokenId.IsNotNull;
 
                 if (isEquality && (!left.Type.GetTypeInfo().IsValueType && !right.Type.GetTypeInfo().IsValueType || left.Type == typeof(Guid) && right.Type == typeof(Guid)))
                 {
+                    if (op.Id == TokenId.IsNull)
+                    {
+                        op.Id = TokenId.Equal;
+                    }
+                    
+                    if (op.Id == TokenId.IsNotNull)
+                    {
+                        op.Id = TokenId.ExclamationEqual;
+                    }
                     // If left or right is NullLiteral, just continue. Else check if the types differ.
                     if (!(Constants.IsNull(left) || Constants.IsNull(right)) && left.Type != right.Type)
                     {
