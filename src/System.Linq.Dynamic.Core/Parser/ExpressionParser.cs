@@ -456,7 +456,17 @@ namespace System.Linq.Dynamic.Core.Parser
                 bool isBetween = op.Id == TokenId.Between;
                 bool isEquality = op.Id == TokenId.Equal || op.Id == TokenId.DoubleEqual || op.Id == TokenId.ExclamationEqual || op.Id == TokenId.LessGreater || op.Id == TokenId.IsNull || op.Id == TokenId.IsNotNull;
 
-                if (isEquality && (!left.Type.GetTypeInfo().IsValueType && !right.Type.GetTypeInfo().IsValueType || left.Type == typeof(Guid) && right.Type == typeof(Guid)))
+                if (isBetween)
+                {
+                    Token op2 = _textParser.CurrentToken;
+                    _textParser.NextToken();
+                    if (op2.Id == TokenId.DoubleAmphersand)
+                    {
+                        right2 = ParseShiftOperator();
+                    }
+                }
+
+                if (isEquality)
                 {
                     if (op.Id == TokenId.IsNull)
                     {
@@ -467,6 +477,10 @@ namespace System.Linq.Dynamic.Core.Parser
                     {
                         op.Id = TokenId.ExclamationEqual;
                     }
+                }
+
+                if (isEquality && (!left.Type.GetTypeInfo().IsValueType && !right.Type.GetTypeInfo().IsValueType || left.Type == typeof(Guid) && right.Type == typeof(Guid)))
+                {
                     // If left or right is NullLiteral, just continue. Else check if the types differ.
                     if (!(Constants.IsNull(left) || Constants.IsNull(right)) && left.Type != right.Type)
                     {
@@ -484,44 +498,45 @@ namespace System.Linq.Dynamic.Core.Parser
                         }
                     }
                 }
-                else if (isBetween)
+                else if (isBetween && !(left is ConstantExpression) && ((!left.Type.GetTypeInfo().IsValueType && !right.Type.GetTypeInfo().IsValueType ||
+                                        left.Type == typeof(Guid) && right.Type == typeof(Guid)) ||
+                                       (!left.Type.GetTypeInfo().IsValueType && !right2.Type.GetTypeInfo().IsValueType ||
+                                        left.Type == typeof(Guid) && right2.Type == typeof(Guid))
+                         ))
                 {
-                    Token op2 = _textParser.CurrentToken;
-                    _textParser.NextToken();
-                    if (op2.Id == TokenId.DoubleAmphersand)
+                    if (!(Constants.IsNull(left) || Constants.IsNull(right)) && left.Type != right.Type)
                     {
-                        right2 = ParseShiftOperator();
-                        
-                        if (!(Constants.IsNull(left) || Constants.IsNull(right)) && left.Type != right.Type)
+                        if (left.Type.IsAssignableFrom(right.Type) ||
+                            HasImplicitConversion(right.Type, left.Type))
                         {
-                            if (left.Type.IsAssignableFrom(right.Type) || HasImplicitConversion(right.Type, left.Type))
-                            {
-                                right = Expression.Convert(right, left.Type);
-                            }
-                            else if (right.Type.IsAssignableFrom(left.Type) || HasImplicitConversion(left.Type, right.Type))
-                            {
-                                left = Expression.Convert(left, right.Type);
-                            }
-                            else
-                            {
-                                throw IncompatibleOperandsError(op.Text, left, right, op.Pos);
-                            }
+                            right = Expression.Convert(right, left.Type);
                         }
-                        
-                        if (!(Constants.IsNull(left) || Constants.IsNull(right2)) && left.Type != right2.Type)
+                        else if (right.Type.IsAssignableFrom(left.Type) ||
+                                 HasImplicitConversion(left.Type, right.Type))
                         {
-                            if (left.Type.IsAssignableFrom(right2.Type) || HasImplicitConversion(right2.Type, left.Type))
-                            {
-                                right2 = Expression.Convert(right2, left.Type);
-                            }
-                            else if (right2.Type.IsAssignableFrom(left.Type) || HasImplicitConversion(left.Type, right2.Type))
-                            {
-                                left = Expression.Convert(left, right2.Type);
-                            }
-                            else
-                            {
-                                throw IncompatibleOperandsError(op.Text, left, right2, op.Pos);
-                            }
+                            left = Expression.Convert(left, right.Type);
+                        }
+                        else
+                        {
+                            throw IncompatibleOperandsError(op.Text, left, right, op.Pos);
+                        }
+                    }
+
+                    if (!(Constants.IsNull(left) || Constants.IsNull(right2)) && left.Type != right2.Type)
+                    {
+                        if (left.Type.IsAssignableFrom(right2.Type) ||
+                            HasImplicitConversion(right2.Type, left.Type))
+                        {
+                            right2 = Expression.Convert(right2, left.Type);
+                        }
+                        else if (right2.Type.IsAssignableFrom(left.Type) ||
+                                 HasImplicitConversion(left.Type, right2.Type))
+                        {
+                            left = Expression.Convert(left, right2.Type);
+                        }
+                        else
+                        {
+                            throw IncompatibleOperandsError(op.Text, left, right2, op.Pos);
                         }
                     }
                 }
@@ -552,18 +567,74 @@ namespace System.Linq.Dynamic.Core.Parser
                         }
                     }
                 }
-                else if ((constantExpr = right as ConstantExpression) != null && constantExpr.Value is string stringValueR && (typeConverter = _typeConverterFactory.GetConverter(left.Type)) != null)
+                else if (right2 != null && 
+                    ((constantExpr = right2 as ConstantExpression) != null && constantExpr.Value is string) ||
+                    ((constantExpr = right2 as ConstantExpression) != null && constantExpr.Value is string) ||
+                    ((constantExpr = right as ConstantExpression) != null && constantExpr.Value is string) ||
+                    ((constantExpr = left as ConstantExpression) != null && constantExpr.Value is string)
+                )
                 {
-                    right = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueR), left.Type);
+                    var stringType = typeof(string);
+                    if (right2.Type != stringType || right.Type != stringType || left.Type != stringType)
+                    {
+                        var constantExprR2 = right2 as ConstantExpression;
+                        var constantExprR = right as ConstantExpression;
+                        var constantExprL = left as ConstantExpression;
+
+                        var stringValueR2 = constantExprR2 != null ? (constantExprR2.Value is string ? constantExprR2.Value as string : null) : null;
+                        var stringValueR = constantExprR != null ? (constantExprR.Value is string ? constantExprR.Value as string : null) : null;
+                        var stringValueL = constantExprL != null ? (constantExprL.Value is string ? constantExprL.Value as string : null) : null;
+
+                        if (constantExprR2 != null && right2.Type != left.Type)
+                        {
+                            typeConverter = _typeConverterFactory.GetConverter(left.Type);
+                            if (typeConverter != null)
+                                right2 = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueR2), left.Type);
+                        }
+                        else if (constantExprR2 != null && right2.Type != right.Type)
+                        {
+                            typeConverter = _typeConverterFactory.GetConverter(right.Type);
+                            if (typeConverter != null)
+                                right2 = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueR2), right.Type);
+                        }
+                        if (constantExprR != null && right.Type != right2.Type)
+                        {
+                            typeConverter = _typeConverterFactory.GetConverter(right2.Type);
+                            if (typeConverter != null)
+                                right = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueR), right2.Type);
+                        }
+                        else if (constantExprR != null && right.Type != left.Type)
+                        {
+                            typeConverter = _typeConverterFactory.GetConverter(left.Type);
+                            if (typeConverter != null)
+                                right = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueR), left.Type);
+                        }
+                        if (constantExprL != null && left.Type != right2.Type)
+                        {
+                            typeConverter = _typeConverterFactory.GetConverter(right2.Type);
+                            if (typeConverter != null)
+                                left = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueL), right2.Type);
+                        }
+                        else if (constantExprL != null && left.Type != right.Type)
+                        {
+                            typeConverter = _typeConverterFactory.GetConverter(right.Type);
+                            if (typeConverter != null)
+                                left = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueL), right.Type);
+                        }
+                    }
                 }
-                else if ((constantExpr = left as ConstantExpression) != null && constantExpr.Value is string stringValueL && (typeConverter = _typeConverterFactory.GetConverter(right.Type)) != null)
+                else if ((constantExpr = right as ConstantExpression) != null && constantExpr.Value is string stringValueRL && (typeConverter = _typeConverterFactory.GetConverter(left.Type)) != null)
                 {
-                    left = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueL), right.Type);
+                    right = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueRL), left.Type);
+                }
+                else if ((constantExpr = left as ConstantExpression) != null && constantExpr.Value is string stringValueLR && (typeConverter = _typeConverterFactory.GetConverter(right.Type)) != null)
+                {
+                    left = Expression.Constant(typeConverter.ConvertFromInvariantString(stringValueLR), right.Type);
                 }
                 else
                 {
                     bool typesAreSameAndImplementCorrectInterface = false;
-                    if (left.Type == right.Type)
+                    if (left.Type == right.Type && (right2 != null && left.Type == right2.Type || right2 == null))
                     {
                         var interfaces = left.Type.GetInterfaces().Where(x => x.GetTypeInfo().IsGenericType);
                         if (isEquality)
@@ -604,6 +675,63 @@ namespace System.Linq.Dynamic.Core.Parser
                         else
                         {
                             CheckAndPromoteOperands(isEquality ? typeof(IEqualitySignatures) : typeof(IRelationalSignatures), op.Id, op.Text, ref left, ref right, op.Pos);
+                        }
+
+                        if (right2 != null)
+                        {
+                            if ((TypeHelper.IsClass(left.Type) || TypeHelper.IsStruct(left.Type)) && right2 is ConstantExpression)
+                            {
+                                if (HasImplicitConversion(left.Type, right2.Type))
+                                {
+                                    left = Expression.Convert(left, right2.Type);
+                                }
+                                else if (HasImplicitConversion(right2.Type, left.Type))
+                                {
+                                    right2 = Expression.Convert(right2, left.Type);
+                                }
+                            }
+                            else if ((TypeHelper.IsClass(right2.Type) || TypeHelper.IsStruct(right2.Type)) && left is ConstantExpression)
+                            {
+                                if (HasImplicitConversion(right2.Type, left.Type))
+                                {
+                                    right2 = Expression.Convert(right2, left.Type);
+                                }
+                                else if (HasImplicitConversion(left.Type, right2.Type))
+                                {
+                                    left = Expression.Convert(left, right2.Type);
+                                }
+                            }
+                            else
+                            {
+                                CheckAndPromoteOperands(isEquality ? typeof(IEqualitySignatures) : typeof(IRelationalSignatures), op.Id, op.Text, ref left, ref right2, op.Pos);
+                            }
+                            
+                            if ((TypeHelper.IsClass(right.Type) || TypeHelper.IsStruct(right.Type)) && right2 is ConstantExpression)
+                            {
+                                if (HasImplicitConversion(right.Type, right2.Type))
+                                {
+                                    right = Expression.Convert(right, right2.Type);
+                                }
+                                else if (HasImplicitConversion(right2.Type, right.Type))
+                                {
+                                    right2 = Expression.Convert(right2, right.Type);
+                                }
+                            }
+                            else if ((TypeHelper.IsClass(right2.Type) || TypeHelper.IsStruct(right2.Type)) && right is ConstantExpression)
+                            {
+                                if (HasImplicitConversion(right2.Type, right.Type))
+                                {
+                                    right2 = Expression.Convert(right2, right.Type);
+                                }
+                                else if (HasImplicitConversion(right.Type, right2.Type))
+                                {
+                                    right = Expression.Convert(right, right2.Type);
+                                }
+                            }
+                            else
+                            {
+                                CheckAndPromoteOperands(isEquality ? typeof(IEqualitySignatures) : typeof(IRelationalSignatures), op.Id, op.Text, ref right, ref right2, op.Pos);
+                            }
                         }
                     }
                 }

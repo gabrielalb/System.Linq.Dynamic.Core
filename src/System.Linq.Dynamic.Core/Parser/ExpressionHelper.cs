@@ -112,7 +112,7 @@ namespace System.Linq.Dynamic.Core.Parser
                 return Expression.AndAlso(Expression.GreaterThanOrEqual(GenerateStaticMethodCall("Compare", left, between.right), Expression.Constant(0)), Expression.LessThanOrEqual(GenerateStaticMethodCall("Compare", left, between.right2), Expression.Constant(0)));
             }
 
-            if (left.Type.GetTypeInfo().IsEnum || between.right.Type.GetTypeInfo().IsEnum && between.right.Type.GetTypeInfo().IsEnum)
+            if (left.Type.GetTypeInfo().IsEnum || between.right.Type.GetTypeInfo().IsEnum && between.right2.Type.GetTypeInfo().IsEnum)
             {
                 return Expression.AndAlso(Expression.GreaterThanOrEqual(
                         left.Type.GetTypeInfo().IsEnum
@@ -196,13 +196,17 @@ namespace System.Linq.Dynamic.Core.Parser
         {
             if (left.Type == typeof(string))
             {
-                return Expression.LessThanOrEqual(GenerateStaticMethodCall("Compare", left, right), Expression.Constant(0));
+                return Expression.LessThanOrEqual(GenerateStaticMethodCall("Compare", left, right),
+                    Expression.Constant(0));
             }
 
             if (left.Type.GetTypeInfo().IsEnum || right.Type.GetTypeInfo().IsEnum)
             {
-                return Expression.LessThanOrEqual(left.Type.GetTypeInfo().IsEnum ? Expression.Convert(left, Enum.GetUnderlyingType(left.Type)) : left,
-                    right.Type.GetTypeInfo().IsEnum ? Expression.Convert(right, Enum.GetUnderlyingType(right.Type)) : right);
+                return Expression.LessThanOrEqual(
+                    left.Type.GetTypeInfo().IsEnum ? Expression.Convert(left, Enum.GetUnderlyingType(left.Type)) : left,
+                    right.Type.GetTypeInfo().IsEnum
+                        ? Expression.Convert(right, Enum.GetUnderlyingType(right.Type))
+                        : right);
             }
 
             WrapConstantExpressions(ref left, ref right);
@@ -272,10 +276,15 @@ namespace System.Linq.Dynamic.Core.Parser
 
         private MethodInfo GetStaticMethod(string methodName, Expression left, Expression right)
         {
-            var methodInfo = left.Type.GetMethod(methodName, new[] { left.Type, right.Type });
+            var underlyingLeftType = Nullable.GetUnderlyingType(left.Type);
+            var underlyingRightType = Nullable.GetUnderlyingType(right.Type);
+            var leftType = underlyingLeftType ?? left.Type;
+            var rightType = underlyingRightType ?? right.Type;
+            
+            var methodInfo = leftType.GetMethod(methodName, new[] { leftType, rightType });
             if (methodInfo == null)
             {
-                methodInfo = right.Type.GetMethod(methodName, new[] { left.Type, right.Type });
+                methodInfo = rightType.GetMethod(methodName, new[] { leftType, rightType });
             }
 
             return methodInfo;

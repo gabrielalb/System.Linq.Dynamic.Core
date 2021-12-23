@@ -344,7 +344,7 @@ namespace System.Linq.Dynamic.Core.Tokenizer
                         {
                             txt += PeekNextChar(textPos);
                             textPos += 1;
-                        } while (isNotNull.ToLowerInvariant().IndexOf(txt.ToLowerInvariant(), StringComparison.Ordinal) >= 0);
+                        } while (txt.Length < isNotNull.Length && isNotNull.ToLowerInvariant().IndexOf(txt.ToLowerInvariant(), StringComparison.Ordinal) >= 0);
 
                         if (string.Compare(isNotNull.ToLowerInvariant(), txt.ToLowerInvariant()) == 0)
                         {
@@ -365,7 +365,7 @@ namespace System.Linq.Dynamic.Core.Tokenizer
                         {
                             txt += PeekNextChar(textPos);
                             textPos += 1;
-                        } while (isNull.ToLowerInvariant().IndexOf(txt.ToLowerInvariant(), StringComparison.Ordinal) >= 0);
+                        } while (txt.Length < isNull.Length && isNull.ToLowerInvariant().IndexOf(txt.ToLowerInvariant(), StringComparison.Ordinal) >= 0);
 
                         if (string.Compare(isNull.ToLowerInvariant(), txt.ToLowerInvariant()) == 0)
                         {
