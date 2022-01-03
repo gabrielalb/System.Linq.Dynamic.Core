@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq.Dynamic.Core.Exceptions;
+using System.Linq.Dynamic.Core.Extensions;
 using System.Linq.Dynamic.Core.Parser.SupportedMethods;
 using System.Linq.Dynamic.Core.Parser.SupportedOperands;
 using System.Linq.Dynamic.Core.Tokenizer;
@@ -568,10 +569,10 @@ namespace System.Linq.Dynamic.Core.Parser
                     }
                 }
                 else if (right2 != null && 
-                    ((constantExpr = right2 as ConstantExpression) != null && constantExpr.Value is string) ||
-                    ((constantExpr = right2 as ConstantExpression) != null && constantExpr.Value is string) ||
-                    ((constantExpr = right as ConstantExpression) != null && constantExpr.Value is string) ||
-                    ((constantExpr = left as ConstantExpression) != null && constantExpr.Value is string)
+                    ((constantExpr = right2 as ConstantExpression) != null && constantExpr.Value is string ||
+                    (constantExpr = right2 as ConstantExpression) != null && constantExpr.Value is string ||
+                    (constantExpr = right as ConstantExpression) != null && constantExpr.Value is string ||
+                    (constantExpr = left as ConstantExpression) != null && constantExpr.Value is string)
                 )
                 {
                     var stringType = typeof(string);
@@ -1077,6 +1078,9 @@ namespace System.Linq.Dynamic.Core.Parser
 
                     case KeywordsHelper.FUNCTION_CAST:
                         return ParseFunctionCast();
+                    
+                    case KeywordsHelper.FUNCTION_TRUNC:
+                        return ParseFunctionTrunc();
                 }
 
                 _textParser.NextToken();
@@ -1258,6 +1262,25 @@ namespace System.Linq.Dynamic.Core.Parser
             Type resolvedType = ResolveTypeFromArgumentExpression(functionName, args[0]);
 
             return Expression.ConvertChecked(_it, resolvedType);
+        }
+        
+        // Trunc(...) function
+        Expression ParseFunctionTrunc()
+        {
+            int errorPos = _textParser.CurrentToken.Pos;
+            string functionName = _textParser.CurrentToken.Text;
+            _textParser.NextToken();
+
+            Expression[] args = ParseArgumentList();
+
+            if (args.Length != 1)
+            {
+                throw ParseError(errorPos, Res.FunctionRequiresOneArg, functionName);
+            }
+
+            Type resolvedType = typeof(DateTime);
+
+            return GenerateConditional(Expression.Equal(args[0], Expression.Constant(null)), Expression.Constant(null), Expression.PropertyOrField(Expression.ConvertChecked(args[0], resolvedType), "Date"), false, errorPos);
         }
 
         Expression GenerateConditional(Expression test, Expression expressionIfTrue, Expression expressionIfFalse, bool nullPropagating, int errorPos)

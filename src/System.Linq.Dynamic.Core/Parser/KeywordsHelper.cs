@@ -20,6 +20,7 @@ namespace System.Linq.Dynamic.Core.Parser
         public const string FUNCTION_IS = "is";
         public const string FUNCTION_AS = "as";
         public const string FUNCTION_CAST = "cast";
+        public const string FUNCTION_TRUNC = "trunc";
 
         private readonly IDictionary<string, object> _keywords = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
         {
@@ -48,6 +49,7 @@ namespace System.Linq.Dynamic.Core.Parser
             _keywords.Add(FUNCTION_IS, FUNCTION_IS);
             _keywords.Add(FUNCTION_AS, FUNCTION_AS);
             _keywords.Add(FUNCTION_CAST, FUNCTION_CAST);
+            _keywords.Add(FUNCTION_TRUNC, FUNCTION_TRUNC);
 
             foreach (Type type in PredefinedTypesHelper.PredefinedTypes.OrderBy(kvp => kvp.Value).Select(kvp => kvp.Key))
             {
