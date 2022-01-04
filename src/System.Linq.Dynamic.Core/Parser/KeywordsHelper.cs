@@ -12,6 +12,7 @@ namespace System.Linq.Dynamic.Core.Parser
         public const string KEYWORD_IT = "it";
         public const string KEYWORD_PARENT = "parent";
         public const string KEYWORD_ROOT = "root";
+        public const string KEYWORD_SYSDATE = "sysdate";
 
         public const string FUNCTION_IIF = "iif";
         public const string FUNCTION_ISNULL = "isnull";
@@ -37,6 +38,7 @@ namespace System.Linq.Dynamic.Core.Parser
                 _keywords.Add(KEYWORD_PARENT, KEYWORD_PARENT);
                 _keywords.Add(KEYWORD_ROOT, KEYWORD_ROOT);
             }
+            _keywords.Add(KEYWORD_SYSDATE, KEYWORD_SYSDATE);
 
             _keywords.Add(SYMBOL_IT, SYMBOL_IT);
             _keywords.Add(SYMBOL_PARENT, SYMBOL_PARENT);

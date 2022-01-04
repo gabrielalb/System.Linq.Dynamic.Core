@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq.Dynamic.Core.Exceptions;
-using System.Linq.Dynamic.Core.Extensions;
 using System.Linq.Dynamic.Core.Parser.SupportedMethods;
 using System.Linq.Dynamic.Core.Parser.SupportedOperands;
 using System.Linq.Dynamic.Core.Tokenizer;
@@ -40,6 +39,7 @@ namespace System.Linq.Dynamic.Core.Parser
         private ParameterExpression _it;
         private ParameterExpression _parent;
         private ParameterExpression _root;
+        private Expression _sysdate;
         private Type _resultType;
         private bool _createParameterCtor;
 
@@ -1057,6 +1057,9 @@ namespace System.Linq.Dynamic.Core.Parser
                     case KeywordsHelper.KEYWORD_ROOT:
                     case KeywordsHelper.SYMBOL_ROOT:
                         return ParseRoot();
+                    
+                    case KeywordsHelper.KEYWORD_SYSDATE:
+                        return ParseSysdate();
 
                     case KeywordsHelper.FUNCTION_IIF:
                         return ParseFunctionIif();
@@ -1147,6 +1150,13 @@ namespace System.Linq.Dynamic.Core.Parser
             }
             _textParser.NextToken();
             return _root;
+        }
+        
+        Expression ParseSysdate()
+        {
+            _textParser.NextToken();
+
+            return _sysdate ??= Expression.Convert(Expression.Constant(DateTime.Now), typeof(DateTime?));
         }
 
         // isnull(a,b) function
