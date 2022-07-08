@@ -1,4 +1,43 @@
-# 1.2.14 (09 November 2021)
+# v1.2.19 (26 June 2022)
+- [#579](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/579) - Support Struct for DynamicLinqTypeAttribute [feature] contributed by [StefH](https://github.com/StefH)
+- [#583](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/583) - Fix example 'ConsoleApp_netcore2.1_EF2.1.1' [bug] contributed by [StefH](https://github.com/StefH)
+- [#584](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/584) - Add more OrderBy unittests [feature] contributed by [StefH](https://github.com/StefH)
+- [#585](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/585) - Fix SelectMany when using JArray [bug] contributed by [StefH](https://github.com/StefH)
+- [#587](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/587) - Fixed: Parenthesis around an &quot;In&quot; expression raise an exception [bug] contributed by [cambirch](https://github.com/cambirch)
+- [#590](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/590) - Bump jQuery from 2.2.2 to 3.0.0 in /web/DynamicLinqWebDocs [dependencies] contributed by [dependabot[bot]](https://github.com/apps/dependabot)
+- [#592](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/592) - Bump Microsoft.NETCore.UniversalWindowsPlatform from 6.0.1 to 6.0.6 in /test-xamarin/WindowsUniversalTestApp16299 [dependencies] contributed by [dependabot[bot]](https://github.com/apps/dependabot)
+- [#594](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/594) - Bump Newtonsoft.Json from 10.0.3 to 13.0.1 in /src-console/ConsoleAppEF2.1 [dependencies] contributed by [dependabot[bot]](https://github.com/apps/dependabot)
+- [#599](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/599) - Bump Newtonsoft.Json from 8.0.3 to 13.0.1 in /web/DynamicLinqWebDocs [dependencies] contributed by [dependabot[bot]](https://github.com/apps/dependabot)
+- [#609](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/609) - Bump Newtonsoft.Json from 10.0.3 to 13.0.1 in /src-console/ConsoleAppEF6_InMemory [dependencies] contributed by [dependabot[bot]](https://github.com/apps/dependabot)
+- [#612](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/612) - Update dependencies (Newtonsoft.Json and more) [dependencies] contributed by [StefH](https://github.com/StefH)
+- [#511](https://github.com/zzzprojects/System.Linq.Dynamic.Core/issues/511) - Strange SelectMany behaviour using JSON [bug]
+- [#548](https://github.com/zzzprojects/System.Linq.Dynamic.Core/issues/548) - IComparer&lt;T&gt; not supported for OrderBy? [feature]
+- [#565](https://github.com/zzzprojects/System.Linq.Dynamic.Core/issues/565) - Methods such as `OrderBy` may not be calling the correct method of the Provider.
+- [#581](https://github.com/zzzprojects/System.Linq.Dynamic.Core/issues/581) - ConsoleApp_netcore2.1_EF2.1.1 fails to run with exception [bug]
+- [#586](https://github.com/zzzprojects/System.Linq.Dynamic.Core/issues/586) - Parenthesis around an &quot;In&quot; expression raise an exception [bug]
+
+# v1.2.18 (03 March 2022)
+- [#573](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/573) - Updated 'new' command (finding a constructor with exact argument-types and same order) [feature] contributed by [StefH](https://github.com/StefH)
+- [#574](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/574) - Bump bootstrap from 3.3.6 to 3.4.1 in /web/DynamicLinqWebDocs [dependencies] contributed by [dependabot[bot]](https://github.com/apps/dependabot)
+- [#576](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/576) - fix enums could not be cast to decimal [feature] contributed by [jogibear9988](https://github.com/jogibear9988)
+- [#571](https://github.com/zzzprojects/System.Linq.Dynamic.Core/issues/571) - ParseException: 'Type 'System.IO.DirectoryInfo' not found' [bug]
+
+# v1.2.17 (21 February 2022)
+- [#569](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/569) - Fix logic for indexer when parameter-type differs [bug] contributed by [StefH](https://github.com/StefH)
+
+# v1.2.16 (19 February 2022)
+- [#562](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/562) - Make TextParser public [feature] contributed by [StefH](https://github.com/StefH)
+- [#563](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/563) - GitHub Actions: use actions/checkout@v2 [security] contributed by [StefH](https://github.com/StefH)
+- [#567](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/567) - Add support for property for Is,As and Cast [feature] contributed by [StefH](https://github.com/StefH)
+
+# v1.2.15 (18 December 2021)
+- [#554](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/554) - Support for parsing Binary Integer [feature] contributed by [StefH](https://github.com/StefH)
+- [#557](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/557) - bind expressions to correct constructor parameter [feature] contributed by [jonasdaniels](https://github.com/jonasdaniels)
+- [#558](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/558) - Allow assembly to be collected [bug] contributed by [hemirunner426](https://github.com/hemirunner426)
+- [#561](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/561) - Fix NET35 build + add unit test for OrderBy with IComparer [bug] contributed by [StefH](https://github.com/StefH)
+- [#552](https://github.com/zzzprojects/System.Linq.Dynamic.Core/issues/552) - Missing parse from binary literal to integer [bug]
+
+# v1.2.14 (09 November 2021)
 - [#551](https://github.com/zzzprojects/System.Linq.Dynamic.Core/pull/551) - Use Microsoft.EntityFrameworkCore 6.0.0 [feature] contributed by [StefH](https://github.com/StefH)
 
 # v1.2.13 (09 October 2021)

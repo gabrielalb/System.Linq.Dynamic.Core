@@ -282,7 +282,7 @@ namespace System.Linq.Dynamic.Core.Parser
         Expression ParseAndOperator()
         {
             Expression left = ParseIn();
-            while (_textParser.CurrentToken.Id == TokenId.DoubleAmphersand)
+            while (_textParser.CurrentToken.Id == TokenId.DoubleAmpersand)
             {
                 Token op = _textParser.CurrentToken;
                 _textParser.NextToken();
@@ -341,6 +341,9 @@ namespace System.Linq.Dynamic.Core.Parser
                             throw ParseError(op.Pos, Res.CloseParenOrCommaExpected);
                         }
                     }
+
+                    // Since this started with an open paren, make sure to move off the close
+                    _textParser.NextToken();
                 }
                 else if (_textParser.CurrentToken.Id == TokenId.Identifier) // a single argument
                 {
@@ -369,8 +372,6 @@ namespace System.Linq.Dynamic.Core.Parser
                 {
                     throw ParseError(op.Pos, Res.OpenParenOrIdentifierExpected);
                 }
-
-                _textParser.NextToken();
             }
 
             return accumulate;
@@ -380,7 +381,7 @@ namespace System.Linq.Dynamic.Core.Parser
         Expression ParseLogicalAndOrOperator()
         {
             Expression left = ParseComparisonOperator();
-            while (_textParser.CurrentToken.Id == TokenId.Amphersand || _textParser.CurrentToken.Id == TokenId.Bar)
+            while (_textParser.CurrentToken.Id == TokenId.Ampersand || _textParser.CurrentToken.Id == TokenId.Bar)
             {
                 Token op = _textParser.CurrentToken;
                 _textParser.NextToken();
@@ -398,7 +399,7 @@ namespace System.Linq.Dynamic.Core.Parser
 
                 switch (op.Id)
                 {
-                    case TokenId.Amphersand:
+                    case TokenId.Ampersand:
                         int parseValue;
                         if (left.Type == typeof(string) && left.NodeType == ExpressionType.Constant && int.TryParse((string)((ConstantExpression)left).Value, out parseValue) && TypeHelper.IsNumericType(right.Type))
                         {
@@ -1102,10 +1103,9 @@ namespace System.Linq.Dynamic.Core.Parser
                 }
                 else
                 {
-                    var lambda = expr as LambdaExpression;
-                    if (lambda != null)
+                    if (expr is LambdaExpression lambdaExpression)
                     {
-                        return ParseLambdaInvocation(lambda);
+                        return ParseLambdaInvocation(lambdaExpression);
                     }
                 }
 
@@ -1226,14 +1226,25 @@ namespace System.Linq.Dynamic.Core.Parser
 
             Expression[] args = ParseArgumentList();
 
-            if (args.Length != 1)
+            if (args.Length != 1 && args.Length != 2)
             {
-                throw ParseError(errorPos, Res.FunctionRequiresOneArg, functionName);
+                throw ParseError(errorPos, Res.FunctionRequiresOneOrTwoArgs, functionName);
             }
 
-            Type resolvedType = ResolveTypeFromArgumentExpression(functionName, args[0]);
+            Expression typeArgument;
+            Expression it;
+            if (args.Length == 1)
+            {
+                typeArgument = args[0];
+                it = _it;
+            }
+            else
+            {
+                typeArgument = args[1];
+                it = args[0];
+            }
 
-            return Expression.TypeIs(_it, resolvedType);
+            return Expression.TypeIs(it, ResolveTypeFromArgumentExpression(functionName, typeArgument, args.Length));
         }
 
         // As(...) function
@@ -1245,14 +1256,25 @@ namespace System.Linq.Dynamic.Core.Parser
 
             Expression[] args = ParseArgumentList();
 
-            if (args.Length != 1)
+            if (args.Length != 1 && args.Length != 2)
             {
-                throw ParseError(errorPos, Res.FunctionRequiresOneArg, functionName);
+                throw ParseError(errorPos, Res.FunctionRequiresOneOrTwoArgs, functionName);
             }
 
-            Type resolvedType = ResolveTypeFromArgumentExpression(functionName, args[0]);
+            Expression typeArgument;
+            Expression it;
+            if (args.Length == 1)
+            {
+                typeArgument = args[0];
+                it = _it;
+            }
+            else
+            {
+                typeArgument = args[1];
+                it = args[0];
+            }
 
-            return Expression.TypeAs(_it, resolvedType);
+            return Expression.TypeAs(it, ResolveTypeFromArgumentExpression(functionName, typeArgument, args.Length));
         }
 
         // Cast(...) function
@@ -1264,14 +1286,25 @@ namespace System.Linq.Dynamic.Core.Parser
 
             Expression[] args = ParseArgumentList();
 
-            if (args.Length != 1)
+            if (args.Length != 1 && args.Length != 2)
             {
-                throw ParseError(errorPos, Res.FunctionRequiresOneArg, functionName);
+                throw ParseError(errorPos, Res.FunctionRequiresOneOrTwoArgs, functionName);
             }
 
-            Type resolvedType = ResolveTypeFromArgumentExpression(functionName, args[0]);
+            Expression typeArgument;
+            Expression it;
+            if (args.Length == 1)
+            {
+                typeArgument = args[0];
+                it = _it;
+            }
+            else
+            {
+                typeArgument = args[1];
+                it = args[0];
+            }
 
-            return Expression.ConvertChecked(_it, resolvedType);
+            return Expression.ConvertChecked(it, ResolveTypeFromArgumentExpression(functionName, typeArgument, args.Length));
         }
         
         // Trunc(...) function
@@ -1325,8 +1358,7 @@ namespace System.Linq.Dynamic.Core.Parser
                     {
                         // - create nullable constant from expressionIfTrue with type from expressionIfFalse
                         // - convert expressionIfFalse to nullable (unless it's already nullable)
-
-                        Type nullableType = TypeHelper.ToNullableType(expressionIfFalse.Type);
+                        var nullableType = TypeHelper.ToNullableType(expressionIfFalse.Type);
                         expressionIfTrue = Expression.Constant(null, nullableType);
 
                         if (!TypeHelper.IsNullableType(expressionIfFalse.Type))
@@ -1567,32 +1599,61 @@ namespace System.Linq.Dynamic.Core.Parser
 #endif
             }
 
-            IEnumerable<PropertyInfo> propertyInfos = type.GetProperties();
+            // Option 1. Try to bind via properties (TODO : investigate if this code block is 100% correct and is needed) 
+            var propertyInfos = type.GetProperties();
             if (type.GetTypeInfo().BaseType == typeof(DynamicClass))
             {
-                propertyInfos = propertyInfos.Where(x => x.Name != "Item");
+                propertyInfos = propertyInfos.Where(x => x.Name != "Item").ToArray();
             }
-
-            Type[] propertyTypes = propertyInfos.Select(p => p.PropertyType).ToArray();
-            ConstructorInfo ctor = type.GetConstructor(propertyTypes);
-            if (ctor != null && ctor.GetParameters().Length == expressions.Count)
+            var propertyTypes = propertyInfos.Select(p => p.PropertyType).ToArray();
+            var ctor = type.GetConstructor(propertyTypes);
+            if (ctor != null)
             {
-                var expressionsPromoted = new List<Expression>();
-
-                // Loop all expressions and promote if needed
-                for (int i = 0; i < propertyTypes.Length; i++)
+                var constructorParameters = ctor.GetParameters();
+                if (constructorParameters.Length == expressions.Count)
                 {
-                    Type propertyType = propertyTypes[i];
+                    bool bindParametersSequentially = !properties.All(p => constructorParameters
+                        .Any(cp => cp.Name == p.Name && (cp.ParameterType == p.Type || p.Type == Nullable.GetUnderlyingType(cp.ParameterType))));
+                    var expressionsPromoted = new List<Expression>();
 
-                    // Promote from Type to Nullable Type if needed
-                    expressionsPromoted.Add(_parsingConfig.ExpressionPromoter.Promote(expressions[i], propertyType, true, true));
+                    // Loop all expressions and promote if needed
+                    for (int i = 0; i < constructorParameters.Length; i++)
+                    {
+                        if (bindParametersSequentially)
+                        {
+                            expressionsPromoted.Add(_parsingConfig.ExpressionPromoter.Promote(expressions[i], propertyTypes[i], true, true));
+                        }
+                        else
+                        {
+                            Type propertyType = constructorParameters[i].ParameterType;
+                            string cParameterName = constructorParameters[i].Name;
+                            var propertyAndIndex = properties.Select((p, index) => new { p, index })
+                                .First(p => p.p.Name == cParameterName && (p.p.Type == propertyType || p.p.Type == Nullable.GetUnderlyingType(propertyType)));
+                            // Promote from Type to Nullable Type if needed
+                            expressionsPromoted.Add(_parsingConfig.ExpressionPromoter.Promote(expressions[propertyAndIndex.index], propertyType, true, true));
+                        }
+                    }
+
+                    return Expression.New(ctor, expressionsPromoted, (IEnumerable<MemberInfo>)propertyInfos);
                 }
-
-                return Expression.New(ctor, expressionsPromoted, (IEnumerable<MemberInfo>)propertyInfos);
             }
 
-            MemberBinding[] bindings = new MemberBinding[properties.Count];
-            for (int i = 0; i < bindings.Length; i++)
+            // Option 2. Try to find a constructor with the exact argument-types and exact same order
+            var constructorArgumentTypes = properties.Select(p => p.Type).ToArray();
+            var exactConstructor = type.GetConstructor(constructorArgumentTypes);
+            if (exactConstructor != null)
+            {
+                // Promote from Type to Nullable Type if needed
+                var expressionsPromoted = exactConstructor.GetParameters()
+                    .Select((t, i) => _parsingConfig.ExpressionPromoter.Promote(expressions[i], t.ParameterType, true, true))
+                    .ToArray();
+
+                return Expression.New(exactConstructor, expressionsPromoted);
+            }
+
+            // Option 2. Call the default (empty) constructor and set the members
+            var memberBindings = new MemberBinding[properties.Count];
+            for (int i = 0; i < memberBindings.Length; i++)
             {
                 string propertyOrFieldName = properties[i].Name;
                 Type propertyOrFieldType;
@@ -1616,10 +1677,10 @@ namespace System.Linq.Dynamic.Core.Parser
                 }
 
                 // Promote from Type to Nullable Type if needed
-                bindings[i] = Expression.Bind(memberInfo, _parsingConfig.ExpressionPromoter.Promote(expressions[i], propertyOrFieldType, true, true));
+                memberBindings[i] = Expression.Bind(memberInfo, _parsingConfig.ExpressionPromoter.Promote(expressions[i], propertyOrFieldType, true, true));
             }
 
-            return Expression.MemberInit(Expression.New(type), bindings);
+            return Expression.MemberInit(Expression.New(type), memberBindings);
         }
 
         Expression ParseLambdaInvocation(LambdaExpression lambda)
@@ -1703,8 +1764,6 @@ namespace System.Linq.Dynamic.Core.Parser
                         throw ParseError(errorPos, Res.AmbiguousConstructorInvocation, TypeHelper.GetTypeName(type));
                 }
             }
-
-            // throw ParseError(errorPos, Res.CannotConvertValue, TypeHelper.GetTypeName(exprType), TypeHelper.GetTypeName(type));
 
             _textParser.ValidateToken(TokenId.Dot, Res.DotOrOpenParenOrStringLiteralExpected);
             _textParser.NextToken();
@@ -1919,7 +1978,7 @@ namespace System.Linq.Dynamic.Core.Parser
                 }
             }
 
-            var enumTypeAsString = string.Join("", parts.Take(parts.Count - 2).ToArray());
+            var enumTypeAsString = string.Concat(parts.Take(parts.Count - 2).ToArray());
             var enumType = _typeFinder.FindTypeByName(enumTypeAsString, null, true);
             if (enumType == null)
             {
@@ -2046,8 +2105,9 @@ namespace System.Linq.Dynamic.Core.Parser
             return Expression.Call(callType, methodName, typeArgs, args);
         }
 
-        private Type ResolveTypeFromArgumentExpression(string functionName, Expression argumentExpression)
+        private Type ResolveTypeFromArgumentExpression(string functionName, Expression argumentExpression, int? arguments = null)
         {
+            string argument = arguments == null ? string.Empty : arguments == 1 ? "first " : "second ";
             switch (argumentExpression)
             {
                 case ConstantExpression constantExpression:
@@ -2060,21 +2120,16 @@ namespace System.Linq.Dynamic.Core.Parser
                             return type;
 
                         default:
-                            throw ParseError(_textParser.CurrentToken.Pos, Res.FunctionRequiresOneNotNullArgOfType, functionName, "string or System.Type");
+                            throw ParseError(_textParser.CurrentToken.Pos, Res.FunctionRequiresNotNullArgOfType, functionName, argument, "string or System.Type");
                     }
 
                 default:
-                    throw ParseError(_textParser.CurrentToken.Pos, Res.FunctionRequiresOneNotNullArgOfType, functionName, "ConstantExpression");
+                    throw ParseError(_textParser.CurrentToken.Pos, Res.FunctionRequiresNotNullArgOfType, functionName, argument, "ConstantExpression");
             }
         }
 
         private Type ResolveTypeStringFromArgument(string functionName, string typeName)
         {
-            if (string.IsNullOrEmpty(typeName))
-            {
-                throw ParseError(_textParser.CurrentToken.Pos, Res.FunctionRequiresOneNotNullArg, functionName, typeName);
-            }
-
             Type resultType = _typeFinder.FindTypeByName(typeName, new[] { _it, _parent, _root }, true);
             if (resultType == null)
             {
@@ -2148,7 +2203,16 @@ namespace System.Linq.Dynamic.Core.Parser
                     throw ParseError(errorPos, Res.NoApplicableIndexer,
                         TypeHelper.GetTypeName(expr.Type));
                 case 1:
-                    return Expression.Call(expr, (MethodInfo)mb, args);
+                    var indexMethod = (MethodInfo)mb;
+                    var indexParameterType = indexMethod.GetParameters().First().ParameterType;
+
+                    var indexArgumentExpression = args[0]; // Indexer only has 1 parameter, so we can use args[0] here
+                    if (indexParameterType != indexArgumentExpression.Type)
+                    {
+                        indexArgumentExpression = Expression.Convert(indexArgumentExpression, indexParameterType);
+                    }
+
+                    return Expression.Call(expr, indexMethod, indexArgumentExpression);
 
                 default:
                     throw ParseError(errorPos, Res.AmbiguousIndexerInvocation, TypeHelper.GetTypeName(expr.Type));
@@ -2172,7 +2236,7 @@ namespace System.Linq.Dynamic.Core.Parser
             var memberExpression = expression as MemberExpression;
             if (memberExpression == null && expression.NodeType == ExpressionType.Coalesce)
             {
-                memberExpression = (expression as BinaryExpression).Left as MemberExpression;
+                memberExpression = (expression as BinaryExpression)?.Left as MemberExpression;
             }
 
             if (memberExpression != null)
